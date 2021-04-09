@@ -10,13 +10,28 @@ import (
 	"strings"
 	"sync"
 
+	chilogger "github.com/766b/chi-logger"
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
 
+var logger *zap.Logger
+
 func main() {
+	var err error
+	logger, err = zap.NewProduction()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+
 	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(chilogger.NewZapMiddleware("router", logger))
 	r.Post("/", handler)
 
 	port := os.Getenv("PORT")
@@ -24,12 +39,12 @@ func main() {
 		port = "8023"
 	}
 
-	err := http.ListenAndServe(":"+port, r)
+	logger.Info("starting http server on", zap.String("port", port))
+	err = http.ListenAndServe(":"+port, r)
 	if errors.Is(err, http.ErrServerClosed) {
 		return
 	} else if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+		logger.Fatal("error running http server", zap.Error(err))
 	}
 }
 
