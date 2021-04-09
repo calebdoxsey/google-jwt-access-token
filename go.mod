@@ -1,5 +1,7 @@
 module github.com/calebdoxsey/google-jwt-config-from-json
 
+// +heroku goVersion go1.16.3
+
 go 1.16
 
 require (
